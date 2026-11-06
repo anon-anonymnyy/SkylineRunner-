@@ -1,0 +1,12 @@
+{
+  "appId": "ru.skylinerunner.game",
+  "appName": "Skyline Runner",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0b0720"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
