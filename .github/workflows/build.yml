@@ -1,0 +1,57 @@
+name: Build Skyline Runner
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Забрать код
+        uses: actions/checkout@v4
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Зависимости
+        run: npm install
+
+      - name: Сборка веб-версии
+        run: npm run build
+
+      - name: Подготовить Android-проект
+        run: |
+          npx cap add android
+          chmod +x android/gradlew
+
+      - name: Debug APK — ставится на телефон
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Архив для Яндекс Игр
+        run: npm run web:zip
+
+      - name: Выложить файлы
+        uses: actions/upload-artifact@v4
+        with:
+          name: skyline-runner-build
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            skyline-runner-yandex.zip
+          if-no-files-found: warn
+          retention-days: 30
