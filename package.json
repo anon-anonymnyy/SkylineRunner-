@@ -1,9 +1,9 @@
 {
   "name": "skyline-runner",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Skyline Runner - parkour endless runner",
+  "description": "Skyline Runner - 2D parkour endless runner",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,8 +11,7 @@
     "web:zip": "node make-zip.mjs"
   },
   "dependencies": {
-    "@capacitor/core": "^7.6.10",
-    "three": "^0.187.0"
+    "@capacitor/core": "^7.6.10"
   },
   "devDependencies": {
     "@capacitor/android": "^7.6.10",

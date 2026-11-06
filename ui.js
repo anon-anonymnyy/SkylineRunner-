@@ -7,7 +7,7 @@ export const Ads = {
     return await new Promise((resolve) => {
       showModal({
         title: 'Здесь будет реклама',
-        text: 'В опубликованной версии тут откроется ролик с наградой. Нажимай «Получить награду», чтобы проверить механику.',
+        text: 'В опубликованной версии тут откроется ролик с наградой. Нажми «Получить награду», чтобы проверить механику.',
         ok: 'Получить награду',
         onOk: () => resolve(true),
         cancel: 'Пропустить',
@@ -50,19 +50,11 @@ export function showModal({ title, text, ok = 'Ок', cancel, onOk, onCancel }) 
     if (fn) fn();
   };
 
-  okBtn.onclick = () => {
-    sfx.ui();
-    close(onOk);
-  };
-  cancelBtn.onclick = () => {
-    sfx.ui();
-    close(onCancel);
-  };
+  okBtn.onclick = () => { sfx.ui(); close(onOk); };
+  cancelBtn.onclick = () => { sfx.ui(); close(onCancel); };
 
   requestAnimationFrame(() => modalEl.classList.add('show'));
 }
-
-const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
 export class UI {
   constructor() {
@@ -70,17 +62,18 @@ export class UI {
       hud: document.getElementById('hud'),
       dist: document.getElementById('dist'),
       coins: document.getElementById('coins'),
+      combo: document.getElementById('combo'),
       menu: document.getElementById('menu'),
       gameover: document.getElementById('gameover'),
       shop: document.getElementById('shop'),
       settings: document.getElementById('settings'),
       finalDist: document.getElementById('final-dist'),
       finalCoins: document.getElementById('final-coins'),
+      finalCombo: document.getElementById('final-combo'),
       bestLine: document.getElementById('best-line'),
       shopCoins: document.getElementById('shop-coins'),
       skinList: document.getElementById('skin-list'),
       trailList: document.getElementById('trail-list'),
-      coinPop: document.getElementById('coin-pop'),
     };
 
     this.soundsEnabled = store.get().sound;
@@ -90,14 +83,11 @@ export class UI {
     document.getElementById('btn-settings').onclick = () => this.openSettings();
     document.getElementById('btn-shop-back').onclick = () => this.closeShop();
     document.getElementById('btn-settings-back').onclick = () => this.closeSettings();
-
     document.getElementById('btn-revive').onclick = () => this.onRevive && this.onRevive();
     document.getElementById('btn-double').onclick = () => this.onDouble && this.onDouble();
     document.getElementById('btn-restart').onclick = () => this.onRestart && this.onRestart();
     document.getElementById('btn-menu').onclick = () => this.onMenu && this.onMenu();
-
-    document.getElementById('gender-f').onclick = () => this.setGender('f');
-    document.getElementById('gender-m').onclick = () => this.setGender('m');
+    document.getElementById('btn-pause').onclick = () => this.onPause && this.onPause();
 
     document.getElementById('btn-sound').onclick = () => {
       this.soundsEnabled = !this.soundsEnabled;
@@ -126,28 +116,26 @@ export class UI {
     this.renderShop();
   }
 
-  setGender(g) {
-    store.setGender(g);
-    this.refreshMenu();
-    sfx.ui();
-    if (this.onGender) this.onGender(g);
-  }
-
   refreshMenu() {
     const d = store.get();
     document.getElementById('best-value').textContent = d.best;
     document.getElementById('wallet-value').textContent = d.coins;
-    document.getElementById('gender-f').classList.toggle('active', d.gender === 'f');
-    document.getElementById('gender-m').classList.toggle('active', d.gender === 'm');
+    document.getElementById('combo-best').textContent = d.bestCombo;
   }
 
   refreshSettings() {
     document.getElementById('btn-sound').textContent = this.soundsEnabled ? 'Звук: вкл' : 'Звук: выкл';
   }
 
-  setHud(dist, coins) {
+  setHud(dist, coins, combo = 0) {
     this.el.dist.textContent = Math.floor(dist);
     this.el.coins.textContent = coins;
+    if (combo > 1) {
+      this.el.combo.textContent = '×' + combo;
+      this.el.combo.classList.add('show');
+    } else {
+      this.el.combo.classList.remove('show');
+    }
   }
 
   showHud(show) {
@@ -166,11 +154,16 @@ export class UI {
     this.el.gameover.classList.add('show');
     this.el.finalDist.textContent = result.distance;
     this.el.finalCoins.textContent = result.coins;
-    this.el.bestLine.textContent = `Рекорд: ${store.get().best} м`;
+    this.el.finalCombo.textContent = result.combo || 0;
+    const d = store.get();
+    this.el.bestLine.textContent = result.isBest
+      ? 'Новый рекорд!'
+      : `Рекорд: ${d.best} м`;
+    this.el.bestLine.classList.toggle('new-best', !!result.isBest);
     this.showHud(false);
     document.getElementById('btn-revive').disabled = false;
     const dbtn = document.getElementById('btn-double');
-    dbtn.textContent = 'Удвоить за рекламу';
+    dbtn.textContent = 'Удвоить монеты за рекламу';
     dbtn.disabled = false;
   }
 
@@ -187,10 +180,7 @@ export class UI {
     sfx.ui();
   }
 
-  closeShop() {
-    this.showMenu();
-    sfx.ui();
-  }
+  closeShop() { this.showMenu(); sfx.ui(); }
 
   openSettings() {
     this.hideAll();
@@ -199,10 +189,7 @@ export class UI {
     sfx.ui();
   }
 
-  closeSettings() {
-    this.showMenu();
-    sfx.ui();
-  }
+  closeSettings() { this.showMenu(); sfx.ui(); }
 
   renderShop() {
     const d = store.get();
@@ -215,7 +202,7 @@ export class UI {
       const card = document.createElement('button');
       card.className = 'item' + (active ? ' item-active' : '');
       card.innerHTML = `
-        <div class="swatch" style="background:linear-gradient(135deg,${hex(s.suit)},${hex(s.trim)})"></div>
+        <div class="swatch" style="background:linear-gradient(135deg,${s.suit},${s.trim})"></div>
         <div class="item-name">${s.name}</div>
         <div class="item-price">${active ? 'Выбрано' : owned ? 'Надеть' : s.price + ' монет'}</div>
       `;
@@ -240,7 +227,9 @@ export class UI {
       const active = d.trail === t.id;
       const card = document.createElement('button');
       card.className = 'item' + (active ? ' item-active' : '');
-      const swatch = t.id === 'rainbow' ? 'linear-gradient(90deg,#ff8fb1,#ffd27a,#4fc3c7)' : hex(t.color);
+      const swatch = t.color === 'rainbow'
+        ? 'linear-gradient(90deg,#f0785f,#f7c948,#5fbf9a,#3fb3d8)'
+        : t.color || '#e6e1d3';
       card.innerHTML = `
         <div class="swatch" style="background:${swatch}"></div>
         <div class="item-name">${t.name}</div>
@@ -267,12 +256,5 @@ export class UI {
     t.classList.add('show');
     clearTimeout(this._toastTimer);
     this._toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
-  }
-
-  coinBurst() {
-    const el = this.el.coinPop;
-    el.classList.remove('pop');
-    void el.offsetWidth;
-    el.classList.add('pop');
   }
 }

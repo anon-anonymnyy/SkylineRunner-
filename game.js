@@ -1,140 +1,84 @@
-import * as THREE from 'three';
+import { Scene } from './scene.js';
 import { World } from './world.js';
 import { Player } from './player.js';
-import { START_SPEED, MAX_SPEED, SPEED_GROWTH, COIN_VALUE, PALETTE } from './config.js';
+import {
+  VIRTUAL_H, BASE_Y, BASE_SPEED, MAX_SPEED, SPEED_PER_M, PX_PER_M, PALETTE,
+} from './config.js';
 import { sfx } from './audio.js';
 
 export class Game {
   constructor(canvas, opts = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d', { alpha: false });
     this.opts = opts;
 
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: false,
-      powerPreference: 'high-performance',
-    });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
-
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(PALETTE.fog, 80, 260);
-
-    this.camera = new THREE.PerspectiveCamera(64, window.innerWidth / window.innerHeight, 0.1, 400);
-    this.camera.position.set(0, 5.4, 9.5);
-    this.camera.lookAt(0, 2.2, -6);
-
-    this.buildSky();
-
-    this.world = new World(this.scene);
-    this.player = new Player(this.scene);
+    this.scene = new Scene();
+    this.world = new World();
+    this.player = new Player();
 
     this.state = 'menu';
-    this.speed = START_SPEED;
+    this.camX = 0;
+    this.camY = 0;
+    this.speed = BASE_SPEED;
     this.distance = 0;
     this.coinsRun = 0;
-    this.invuln = 0;
+    this.time = 0;
+    this.particles = [];
+    this.floats = [];
     this.shake = 0;
     this.deathId = 0;
-    this.ringPool = [];
-    this.activeRings = [];
+    this.last = 0;
+    this.acc = 0;
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.nearMiss = 0;
 
-    this.clock = new THREE.Clock();
-    this.onFrame = this.onFrame.bind(this);
-
+    this.resize();
     window.addEventListener('resize', () => this.resize());
-  }
 
-  buildSky() {
-    const mat = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      fog: false,
-      uniforms: {
-        top: { value: new THREE.Color(PALETTE.skyTop) },
-        mid: { value: new THREE.Color(PALETTE.skyMid) },
-        bottom: { value: new THREE.Color(PALETTE.skyHorizon) },
-      },
-      vertexShader: `
-        varying vec3 vPos;
-        void main() {
-          vPos = position;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 top; uniform vec3 mid; uniform vec3 bottom;
-        varying vec3 vPos;
-        void main() {
-          float h = normalize(vPos).y;
-          vec3 col = mix(bottom, mid, smoothstep(-0.05, 0.22, h));
-          col = mix(col, top, smoothstep(0.2, 0.8, h));
-          gl_FragColor = vec4(col, 1.0);
-        }
-      `,
-    });
-    this.sky = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), mat);
-    this.scene.add(this.sky);
-
-    this.sun = new THREE.Mesh(
-      new THREE.CircleGeometry(20, 48),
-      new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false })
-    );
-    this.sun.position.set(-70, 60, -230);
-    this.scene.add(this.sun);
-
-    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: false });
-    for (let i = 0; i < 9; i++) {
-      const cloud = new THREE.Group();
-      for (let k = 0; k < 4; k++) {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 3, 12, 10), cloudMat);
-        puff.position.set(k * 5 - 7, Math.random() * 2, Math.random() * 3);
-        cloud.add(puff);
-      }
-      cloud.position.set((Math.random() - 0.5) * 220, 34 + Math.random() * 16, -90 - Math.random() * 140);
-      this.scene.add(cloud);
-    }
+    this.loop = this.loop.bind(this);
   }
 
   resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = window.innerWidth;
     const h = window.innerHeight;
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-    this.renderer.setSize(w, h, false);
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.dpr = dpr;
+    this.scale = h / VIRTUAL_H;
+    this.vw = w / this.scale;
+    this.vh = VIRTUAL_H;
+    if (this.vw < 340) this.scale = w / 340, this.vw = 340, this.vh = h / this.scale;
+    this.groundScreenY = this.vh * 0.68;
   }
 
-  applySkin(skin) {
-    this.player.applySkin(skin);
+  setSkin(skin) {
+    this.player.setSkin(skin);
   }
 
   start() {
     this.world.reset();
-    this.player.reset();
-    this.speed = START_SPEED;
+    this.player.reset(120, BASE_Y);
+    this.state = 'running';
+    this.camX = 0;
+    this.camY = BASE_Y - this.groundScreenY;
+    this.lastGroundY = BASE_Y;
+    this.speed = BASE_SPEED;
     this.distance = 0;
     this.coinsRun = 0;
-    this.invuln = 0.6;
+    this.time = 0;
+    this.particles.length = 0;
+    this.floats.length = 0;
     this.shake = 0;
-    this.state = 'running';
-    this.clock.getDelta();
-    this.world.populate(0);
-  }
-
-  revive() {
-    this.player.reset();
-    this.invuln = 2.2;
-    this.state = 'running';
-    for (const o of this.world.obstacles) {
-      if (o.z > -26) {
-        o.z -= 40;
-        o.mesh.position.z = o.z;
-      }
-    }
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.player.dead = false;
+    this.world.generate(0, this.vw, 0);
+    this.last = performance.now();
+    this.player.fellOff = false;
   }
 
   pause() {
@@ -144,136 +88,7 @@ export class Game {
   resume() {
     if (this.state === 'paused') {
       this.state = 'running';
-      this.clock.getDelta();
-    }
-  }
-
-  onFrame() {
-    requestAnimationFrame(this.onFrame);
-    if (this.state === 'paused') {
-      this.render();
-      return;
-    }
-
-    const dt = Math.min(this.clock.getDelta(), 0.05);
-
-    if (this.state === 'running') {
-      const difficulty = Math.min(1, this.distance / 1600);
-      this.speed = Math.min(MAX_SPEED, START_SPEED + this.distance * SPEED_GROWTH);
-      this.distance += this.speed * dt;
-      this.world.update(dt, this.speed, difficulty);
-      this.player.update(dt, this.speed);
-
-      if (this.invuln > 0) this.invuln -= dt;
-      if (this.player.consumeLanded()) sfx.land();
-
-      this.checkCoins();
-      if (this.invuln <= 0) this.checkCollision();
-      this.animateSky();
-    } else if (this.state === 'dead') {
-      this.player.update(dt, 0);
-    } else {
-      this.speed = 16;
-      this.world.update(dt, this.speed, 0);
-      this.player.update(dt, this.speed);
-      this.animateSky();
-    }
-
-    this.updateCamera(dt);
-    this.render();
-  }
-
-  animateSky() {
-    this.sky.position.copy(this.camera.position);
-    this.sun.lookAt(this.camera.position);
-  }
-
-  updateCamera(dt) {
-    this.camera.position.x += (this.player.x * 0.55 - this.camera.position.x) * Math.min(1, dt * 5);
-    this.camera.position.y += (5.4 + this.player.y * 0.42 - this.camera.position.y) * Math.min(1, dt * 5);
-    this.camera.position.z = 9.5;
-
-    if (this.shake > 0) {
-      this.shake -= dt * 2.2;
-      const s = Math.max(0, this.shake) * 0.6;
-      this.camera.position.x += (Math.random() - 0.5) * s;
-      this.camera.position.y += (Math.random() - 0.5) * s;
-    }
-
-    this.camera.lookAt(this.player.x * 0.45, 2.4 + this.player.y * 0.35, -8);
-    this.camera.fov = 64 + Math.min(12, (this.speed - START_SPEED) * 0.9);
-    this.camera.updateProjectionMatrix();
-  }
-
-  checkCoins() {
-    const p = this.player;
-    const pyTop = p.y + p.height;
-
-    for (let i = this.world.coins.length - 1; i >= 0; i--) {
-      const c = this.world.coins[i];
-      if (!c.active) continue;
-      if (Math.abs(c.z) > 1.5) continue;
-      if (Math.abs(c.mesh.position.x - p.x) > 1.9) continue;
-      if (c.y < p.y - 0.9 || c.y > pyTop + 0.9) continue;
-      const pos = c.mesh.position.clone();
-      this.world.releaseCoin(c);
-      this.world.coins.splice(i, 1);
-      this.coinsRun += COIN_VALUE;
-      sfx.coin();
-      this.popCoin(pos);
-      if (this.opts.onCoin) this.opts.onCoin(this.coinsRun);
-    }
-  }
-
-  popCoin(pos) {
-    let r = this.ringPool.pop();
-    if (!r) {
-      r = new THREE.Mesh(
-        new THREE.RingGeometry(0.25, 0.4, 16),
-        new THREE.MeshBasicMaterial({ color: 0xffd45a, transparent: true, side: THREE.DoubleSide, depthWrite: false })
-      );
-      this.scene.add(r);
-    }
-    r.position.copy(pos);
-    r.visible = true;
-    r.userData.life = 0.35;
-    r.userData.max = 0.35;
-    this.activeRings.push(r);
-  }
-
-  updateRings(dt) {
-    for (let i = this.activeRings.length - 1; i >= 0; i--) {
-      const r = this.activeRings[i];
-      r.userData.life -= dt;
-      const k = 1 - r.userData.life / r.userData.max;
-      r.scale.setScalar(1 + k * 3);
-      r.material.opacity = Math.max(0, 1 - k);
-      r.lookAt(this.camera.position);
-      if (r.userData.life <= 0) {
-        r.visible = false;
-        this.ringPool.push(r);
-        this.activeRings.splice(i, 1);
-      }
-    }
-  }
-
-  checkCollision() {
-    const p = this.player;
-    const halfW = 0.52;
-    const pyBase = p.y + 0.06;
-    const pyTop = p.y + p.height;
-
-    for (const o of this.world.obstacles) {
-      if (!o.active) continue;
-      if (Math.abs(o.z) > o.d / 2 + 0.55) continue;
-      if (Math.abs(o.mesh.position.x - p.x) > o.w / 2 + halfW) continue;
-
-      const oBot = o.y - o.h / 2;
-      const oTop = o.y + o.h / 2;
-      if (pyTop < oBot || pyBase > oTop) continue;
-
-      this.die();
-      return;
+      this.last = performance.now();
     }
   }
 
@@ -282,8 +97,10 @@ export class Game {
     this.state = 'dead';
     this.deathId += 1;
     this.player.dead = true;
-    this.shake = 1.2;
+    this.player.vy = -520;
+    this.shake = 12;
     sfx.hit();
+    this.burst(this.player.x, this.player.y - 40, 18, '#f0785f');
     if (this.opts.onDeath) {
       this.opts.onDeath({
         distance: Math.floor(this.distance),
@@ -293,33 +110,241 @@ export class Game {
     }
   }
 
-  render() {
-    this.updateRings(1 / 60);
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  moveLane(dir) {
-    if (this.state !== 'running') return;
-    if (this.player.moveLane(dir)) sfx.ui();
-  }
-
   jump() {
     if (this.state !== 'running') return;
-    if (this.player.jump()) sfx.jump();
+    const r = this.player.jump();
+    if (r === 'jump') {
+      sfx.jump();
+      this.burst(this.player.x, this.player.y, 6, '#ffffff');
+    }
+    if (r === 'double') {
+      sfx.double();
+      this.burst(this.player.x, this.player.y - 20, 10, '#ffffff');
+    }
   }
 
   slide() {
     if (this.state !== 'running') return;
-    if (this.player.slide()) sfx.slide();
+    if (this.player.slide()) {
+      sfx.slide();
+      this.burst(this.player.x - 10, this.player.y - 8, 7, '#ffffff');
+    }
   }
 
-  grappleStart() {
-    if (this.state !== 'running') return;
-    if (this.player.startGrapple()) sfx.grapple();
+  burst(x, y, n, color) {
+    for (let i = 0; i < n; i++) {
+      this.particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 220,
+        vy: -Math.random() * 200 - 20,
+        life: 0.4 + Math.random() * 0.35,
+        max: 0.75,
+        r: 2 + Math.random() * 4,
+        color,
+      });
+    }
   }
 
-  grappleEnd() {
-    if (this.state !== 'running') return;
-    this.player.releaseGrapple(true);
+  float(x, y, text, color) {
+    this.floats.push({ x, y, text, color, life: 0.9, max: 0.9 });
+  }
+
+  loop(now) {
+    requestAnimationFrame(this.loop);
+    const dt = Math.min((now - this.last) / 1000, 0.05);
+    this.last = now;
+
+    if (this.state === 'paused') {
+      this.render();
+      return;
+    }
+
+    this.time += dt;
+
+    if (this.state === 'running') {
+      this.speed = Math.min(MAX_SPEED, BASE_SPEED + this.distance * SPEED_PER_M);
+      const dx = this.speed * dt;
+      this.player.x += dx;
+      this.distance += dx / PX_PER_M;
+
+      const difficulty = Math.min(1, this.distance / 1800);
+      this.world.generate(this.camX, this.vw, difficulty);
+      this.player.update(dt, this.world, this.speed);
+
+      if (this.player.fellOff) {
+        this.player.fellOff = false;
+        this.die();
+      }
+
+      this.checkCoins();
+      this.checkObstacles();
+      this.updateCombo(dt);
+      this.scene.update(dt, this.speed);
+      this.emitDust(dt);
+    } else if (this.state === 'dead') {
+      this.player.update(dt, this.world, 0);
+      this.scene.update(dt, 0);
+    } else {
+      this.player.runPhase += dt * 6;
+      this.scene.update(dt, 140);
+    }
+
+    this.updateParticles(dt);
+    this.updateCamera(dt);
+    this.render();
+  }
+
+  emitDust(dt) {
+    if (!this.player.onGround) return;
+    if (Math.random() > dt * 26) return;
+    this.particles.push({
+      x: this.player.x - 12,
+      y: this.player.y - 2,
+      vx: -60 - Math.random() * 80,
+      vy: -Math.random() * 60,
+      life: 0.3,
+      max: 0.3,
+      r: 2 + Math.random() * 3,
+      color: 'rgba(255,255,255,0.75)',
+    });
+  }
+
+  updateCombo(dt) {
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) this.combo = 0;
+    }
+  }
+
+  checkCoins() {
+    const b = this.player.aabb();
+    for (const c of this.world.coins) {
+      if (c.got) continue;
+      if (Math.abs(c.x - this.player.x) > 34) continue;
+      if (c.y < b.y - 14 || c.y > b.y + b.h + 14) continue;
+      c.got = true;
+      this.coinsRun += 1;
+      this.combo += 1;
+      this.comboTimer = 1.6;
+      sfx.coin(this.combo);
+      this.float(c.x, c.y - 14, '+1', '#f7c948');
+      this.burst(c.x, c.y, 5, '#f7c948');
+      if (this.opts.onCoin) this.opts.onCoin(this.coinsRun);
+    }
+  }
+
+  checkObstacles() {
+    const b = this.player.aabb();
+    for (const o of this.world.obstacles) {
+      if (o.x + o.w < b.x - 40) continue;
+      if (o.x > b.x + b.w + 40) break;
+
+      const hitX = b.x < o.x + o.w && b.x + b.w > o.x;
+      const hitY = b.y < o.y + o.h && b.y + b.h > o.y;
+      if (hitX && hitY) {
+        this.die();
+        return;
+      }
+      const closeX = b.x < o.x + o.w + 16 && b.x + b.w > o.x - 16;
+      if (closeX && !o.counted) {
+        o.counted = true;
+        this.nearMiss += 1;
+        this.float(o.x + o.w / 2, o.y - 20, 'мимо!', '#5fbf9a');
+      }
+    }
+  }
+
+  updateParticles(dt) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 700 * dt;
+      if (p.life <= 0) this.particles.splice(i, 1);
+    }
+    for (let i = this.floats.length - 1; i >= 0; i--) {
+      const f = this.floats[i];
+      f.life -= dt;
+      f.y -= 46 * dt;
+      if (f.life <= 0) this.floats.splice(i, 1);
+    }
+    if (this.shake > 0) this.shake -= dt * 26;
+  }
+
+  updateCamera(dt) {
+    const targetX = this.player.x - this.vw * 0.24;
+    this.camX += (targetX - this.camX) * Math.min(1, dt * 12);
+
+    if (this.player.onGround) this.lastGroundY = this.player.y;
+
+    const desired = this.lastGroundY - this.groundScreenY;
+    this.camY += (desired - this.camY) * Math.min(1, dt * 4.5);
+  }
+
+  render() {
+    const ctx = this.ctx;
+    const { scale, dpr } = this;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+
+    let sx = 0;
+    let sy = 0;
+    if (this.shake > 0) {
+      sx = (Math.random() - 0.5) * this.shake;
+      sy = (Math.random() - 0.5) * this.shake;
+    }
+    ctx.translate(sx, sy);
+
+    this.scene.draw(ctx, this.camX, this.camY, this.vw, this.vh, this.speed);
+
+    this.world.drawPlatforms(ctx, this.camX, this.camY, this.vw, this.vh);
+    this.world.drawDecor(ctx, this.camX, this.camY);
+    this.world.drawObstacles(ctx, this.camX, this.camY);
+    this.world.drawCoins(ctx, this.camX, this.camY, this.time);
+
+    this.drawParticles(ctx);
+    this.player.draw(ctx, this.camX, this.camY, this.time);
+    this.drawFloats(ctx);
+
+    if (this.combo > 1) this.drawCombo(ctx);
+  }
+
+  drawParticles(ctx) {
+    for (const p of this.particles) {
+      const a = Math.max(0, p.life / p.max);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x - this.camX, p.y - this.camY, p.r * a + 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawFloats(ctx) {
+    ctx.textAlign = 'center';
+    for (const f of this.floats) {
+      const a = Math.max(0, f.life / f.max);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = f.color;
+      ctx.font = '700 22px -apple-system, system-ui, sans-serif';
+      ctx.fillText(f.text, f.x - this.camX, f.y - this.camY);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawCombo(ctx) {
+    const a = Math.min(1, this.comboTimer * 2);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = PALETTE.coin;
+    ctx.font = '900 34px -apple-system, system-ui, sans-serif';
+    ctx.fillText(`×${this.combo}`, this.vw * 0.5, 120);
+    ctx.font = '700 13px -apple-system, system-ui, sans-serif';
+    ctx.fillStyle = '#20304a';
+    ctx.fillText('СЕРИЯ', this.vw * 0.5, 140);
+    ctx.restore();
   }
 }

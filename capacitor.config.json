@@ -3,8 +3,8 @@
   "appName": "Skyline Runner",
   "webDir": "dist",
   "android": {
-    "allowMixedContent": true,
-    "backgroundColor": "#b6dcf7"
+    "backgroundColor": "#a8d7f2",
+    "allowMixedContent": true
   },
   "server": {
     "androidScheme": "https"

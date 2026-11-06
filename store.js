@@ -1,4 +1,4 @@
-const KEY = 'skyline_runner_save_v1';
+const KEY = 'skyline_runner_save_v2';
 
 const DEFAULT = {
   coins: 0,
@@ -11,13 +11,14 @@ const DEFAULT = {
   sound: true,
   runs: 0,
   totalCoins: 0,
+  bestCombo: 0,
 };
 
 let data = load();
 
 function load() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) || localStorage.getItem('skyline_runner_save_v1');
     if (!raw) return { ...DEFAULT };
     return { ...DEFAULT, ...JSON.parse(raw) };
   } catch {
@@ -29,7 +30,7 @@ export function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(data));
   } catch {
-    /* приватный режим — играем без сохранения */
+    /* ignore */
   }
 }
 
@@ -57,6 +58,13 @@ export function setBest(dist) {
     return true;
   }
   return false;
+}
+
+export function setBestCombo(c) {
+  if (c > data.bestCombo) {
+    data.bestCombo = c;
+    save();
+  }
 }
 
 export function buySkin(id, price) {

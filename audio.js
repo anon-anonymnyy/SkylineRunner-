@@ -1,5 +1,3 @@
-import { get } from './store.js';
-
 let ctx = null;
 
 function ac() {
@@ -16,8 +14,7 @@ export function unlockAudio() {
   ac();
 }
 
-function blip({ freq = 440, dur = 0.12, type = 'sine', gain = 0.08, slide = 0 }) {
-  if (!get().sound) return;
+function blip({ freq = 440, dur = 0.12, type = 'sine', gain = 0.06, slide = 0 }) {
   const c = ac();
   if (!c) return;
   const t = c.currentTime;
@@ -35,15 +32,11 @@ function blip({ freq = 440, dur = 0.12, type = 'sine', gain = 0.08, slide = 0 })
 }
 
 export const sfx = {
-  jump: () => blip({ freq: 380, slide: 260, dur: 0.14, type: 'triangle', gain: 0.07 }),
-  land: () => blip({ freq: 180, slide: -70, dur: 0.1, type: 'sine', gain: 0.05 }),
-  coin: () => blip({ freq: 880, slide: 420, dur: 0.1, type: 'square', gain: 0.045 }),
-  slide: () => blip({ freq: 300, slide: -180, dur: 0.22, type: 'sawtooth', gain: 0.04 }),
-  grapple: () => blip({ freq: 240, slide: 700, dur: 0.28, type: 'sawtooth', gain: 0.05 }),
-  hit: () => blip({ freq: 150, slide: -110, dur: 0.4, type: 'sawtooth', gain: 0.1 }),
-  ui: () => blip({ freq: 620, dur: 0.06, type: 'sine', gain: 0.05 }),
-  buy: () => {
-    blip({ freq: 660, dur: 0.09, type: 'sine', gain: 0.06 });
-    setTimeout(() => blip({ freq: 990, dur: 0.13, type: 'sine', gain: 0.06 }), 90);
-  },
+  jump: () => blip({ freq: 420, slide: 240, dur: 0.13, type: 'triangle', gain: 0.06 }),
+  double: () => blip({ freq: 620, slide: 320, dur: 0.14, type: 'triangle', gain: 0.06 }),
+  landing: () => blip({ freq: 190, slide: -70, dur: 0.1, type: 'sine', gain: 0.045 }),
+  slide: () => blip({ freq: 280, slide: -160, dur: 0.2, type: 'sawtooth', gain: 0.035 }),
+  coin: (combo = 1) => blip({ freq: 780 + Math.min(combo, 8) * 55, slide: 260, dur: 0.09, type: 'square', gain: 0.04 }),
+  hit: () => blip({ freq: 150, slide: -110, dur: 0.4, type: 'sawtooth', gain: 0.09 }),
+  ui: () => blip({ freq: 620, dur: 0.06, type: 'sine', gain: 0.045 }),
 };

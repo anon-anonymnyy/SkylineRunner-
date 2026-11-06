@@ -1,6 +1,6 @@
 const MIN_DIST = 26;
 const MAX_TIME = 600;
-const HOLD_MS = 130;
+const HOLD_MS = 240;
 
 export class Input {
   constructor(target) {
@@ -12,8 +12,16 @@ export class Input {
     this.holdTimer = null;
     this.enabled = true;
 
-    target.addEventListener('touchstart', (e) => this.onDown(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-    target.addEventListener('touchend', (e) => this.onUp(e.changedTouches[0].clientX, e.changedTouches[0].clientY), { passive: true });
+    target.addEventListener('touchstart', (e) => {
+      const t = e.changedTouches[0];
+      this.onDown(t.clientX, t.clientY);
+    }, { passive: true });
+
+    target.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0];
+      this.onUp(t.clientX, t.clientY);
+    }, { passive: true });
+
     target.addEventListener('touchcancel', () => this.cancel(), { passive: true });
 
     target.addEventListener('mousedown', (e) => this.onDown(e.clientX, e.clientY));
@@ -21,14 +29,10 @@ export class Input {
 
     window.addEventListener('keydown', (e) => {
       if (!this.enabled || e.repeat) return;
-      if (e.key === 'ArrowLeft' || e.key === 'a') this.fire('swipeLeft');
-      if (e.key === 'ArrowRight' || e.key === 'd') this.fire('swipeRight');
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') this.fire('swipeUp');
-      if (e.key === 'ArrowDown' || e.key === 's') this.fire('swipeDown');
-      if (e.key === 'Shift') this.holdStart();
-    });
-    window.addEventListener('keyup', (e) => {
-      if (e.key === 'Shift') this.holdEnd();
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') this.fire('up');
+      if (e.key === 'ArrowDown' || e.key === 's') this.fire('down');
+      if (e.key === 'ArrowLeft' || e.key === 'a') this.fire('left');
+      if (e.key === 'ArrowRight' || e.key === 'd') this.fire('right');
     });
   }
 
@@ -49,7 +53,7 @@ export class Input {
     this.startT = performance.now();
     this.holdTimer = setTimeout(() => {
       this.holding = true;
-      this.fire('holdStart');
+      this.fire('hold');
     }, HOLD_MS);
   }
 
@@ -59,47 +63,26 @@ export class Input {
       return;
     }
     clearTimeout(this.holdTimer);
-    if (this.holding) {
-      this.holding = false;
-      this.fire('holdEnd');
-      return;
-    }
+    this.holding = false;
+
     const dx = x - this.startX;
     const dy = y - this.startY;
     const dt = performance.now() - this.startT;
-    const adx = Math.abs(dx);
-    const ady = Math.abs(dy);
-
     if (dt > MAX_TIME) return;
 
-    if (Math.max(adx, ady) < MIN_DIST) {
-      this.fire('tap');
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < MIN_DIST) {
+      this.fire('up');
       return;
     }
-    if (adx > ady) {
-      this.fire(dx > 0 ? 'swipeRight' : 'swipeLeft');
+    if (Math.abs(dy) > Math.abs(dx)) {
+      this.fire(dy > 0 ? 'down' : 'up');
     } else {
-      this.fire(dy > 0 ? 'swipeDown' : 'swipeUp');
+      this.fire(dx > 0 ? 'right' : 'left');
     }
   }
 
   cancel() {
     clearTimeout(this.holdTimer);
-    if (this.holding) {
-      this.holding = false;
-      this.fire('holdEnd');
-    }
-  }
-
-  holdStart() {
-    this.holding = true;
-    this.fire('holdStart');
-  }
-
-  holdEnd() {
-    if (this.holding) {
-      this.holding = false;
-      this.fire('holdEnd');
-    }
+    this.holding = false;
   }
 }

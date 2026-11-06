@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#b6dcf7" />
+  <meta name="theme-color" content="#a8d7f2" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Skyline Runner</title>
@@ -13,24 +13,24 @@
 
   <div id="hud">
     <div class="hud-top">
-      <div class="stat">
-        <div class="stat-label">Дистанция</div>
-        <div class="stat-value"><span id="dist">0</span> м</div>
+      <div class="pill">
+        <div class="pill-label">Дистанция</div>
+        <div class="pill-value"><span id="dist">0</span> м</div>
       </div>
-      <div class="row">
-        <div class="stat coins">
-          <div class="stat-label">Монеты</div>
-          <div class="stat-value"><span id="coins">0</span></div>
-          <div id="coin-pop"></div>
+      <div class="hud-right">
+        <div class="pill pill-coins">
+          <div class="pill-label">Монеты</div>
+          <div class="pill-value coin"><span id="coins">0</span></div>
         </div>
-        <button id="pause-btn" aria-label="Пауза">❚❚</button>
+        <button id="btn-pause" class="round" aria-label="Пауза">❚❚</button>
       </div>
     </div>
+    <div id="combo">×0</div>
   </div>
 
   <div id="menu" class="screen">
-    <div class="logo">SKYLINE<br />RUNNER</div>
-    <div class="logo-sub">Солнечные крыши</div>
+    <div class="logo">SKYLINE<br /><span>RUNNER</span></div>
+    <div class="logo-sub">Беги по крышам</div>
 
     <div class="badges">
       <div class="badge">
@@ -39,40 +39,37 @@
       </div>
       <div class="badge">
         <div class="badge-label">Монеты</div>
-        <div class="badge-value"><span id="wallet-value">0</span></div>
+        <div class="badge-value gold"><span id="wallet-value">0</span></div>
       </div>
-    </div>
-
-    <div class="gender">
-      <button id="gender-f" class="active">Девушка</button>
-      <button id="gender-m">Парень</button>
+      <div class="badge">
+        <div class="badge-label">Серия</div>
+        <div class="badge-value"><span id="combo-best">0</span></div>
+      </div>
     </div>
 
     <button id="btn-play" class="btn btn-primary btn-play">Играть</button>
 
     <div class="row">
-      <button id="btn-shop" class="btn btn-ghost">🛒 Магазин</button>
-      <button id="btn-settings" class="btn btn-ghost">⚙ Настройки</button>
+      <button id="btn-shop" class="btn btn-ghost">Магазин</button>
+      <button id="btn-settings" class="btn btn-ghost">Настройки</button>
     </div>
 
     <div class="hint">
-      Свайп влево/вправо — смена полосы<br />
-      Свайп вверх — прыжок, вниз — подкат<br />
-      Удержание — крюк-кошка
+      Свайп вверх или тап — прыжок<br />
+      Свайп вверх в воздухе — двойной прыжок<br />
+      Свайп вниз — подкат
     </div>
   </div>
 
   <div id="shop" class="screen">
     <div class="screen-title">Магазин</div>
     <div class="wallet">Монеты: <span id="shop-coins">0</span></div>
-
     <div class="scroll-area">
       <div class="section-label">Костюмы</div>
       <div id="skin-list" class="grid"></div>
       <div class="section-label">Следы</div>
       <div id="trail-list" class="grid"></div>
     </div>
-
     <button id="btn-shop-back" class="btn btn-ghost">Назад</button>
   </div>
 
@@ -82,13 +79,12 @@
       <button id="btn-sound" class="btn btn-ghost">Звук: вкл</button>
       <button id="btn-reset" class="btn btn-ghost">Сбросить прогресс</button>
     </div>
-    <div class="hint">Skyline Runner v0.2 · прототип</div>
+    <div class="hint">Skyline Runner v1.0 · 2D</div>
     <button id="btn-settings-back" class="btn btn-ghost">Назад</button>
   </div>
 
   <div id="gameover" class="screen">
     <div class="go-title">Забег окончен</div>
-
     <div class="result">
       <div class="result-item">
         <div class="result-value"><span id="final-dist">0</span></div>
@@ -98,20 +94,21 @@
         <div class="result-value coin"><span id="final-coins">0</span></div>
         <div class="result-label">монет</div>
       </div>
+      <div class="result-item">
+        <div class="result-value combo"><span id="final-combo">0</span></div>
+        <div class="result-label">серия</div>
+      </div>
     </div>
-
     <div id="best-line">Рекорд: 0 м</div>
-
     <div class="btn-col">
       <button id="btn-revive" class="btn btn-primary btn-ad">▶ Воскреснуть за рекламу</button>
-      <button id="btn-double" class="btn btn-ghost btn-ad">×2 Удвоить монеты</button>
+      <button id="btn-double" class="btn btn-ghost btn-ad">Удвоить монеты за рекламу</button>
       <button id="btn-restart" class="btn btn-ghost">Заново</button>
       <button id="btn-menu" class="btn btn-ghost">В меню</button>
     </div>
   </div>
 
   <div id="toast"></div>
-
   <script type="module" src="/main.js"></script>
 </body>
 </html>

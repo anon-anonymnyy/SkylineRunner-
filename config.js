@@ -1,53 +1,57 @@
-export const LANE_X = [-4, 0, 4];
-export const ROOF_W = 15;
-export const CHUNK_LEN = 44;
+export const VIRTUAL_H = 720;
+export const BASE_Y = 470;
 
-export const START_SPEED = 21;
-export const MAX_SPEED = 44;
-export const SPEED_GROWTH = 0.09;
+export const GRAVITY = 2950;
+export const JUMP_V = -1010;
+export const JUMP_CUT = 0.42;
 
-export const GRAVITY = -34;
-export const JUMP_V = 12.5;
-export const DOUBLE_JUMP_V = 10.5;
+export const BASE_SPEED = 520;
+export const MAX_SPEED = 1060;
+export const SPEED_PER_M = 0.5;
+export const PX_PER_M = 51;
 
-export const LANE_SWITCH_SPEED = 12;
+export const SLIDE_TIME = 0.55;
+export const COYOTE = 0.1;
+export const JUMP_BUFFER = 0.13;
 
-export const PLAYER_H = 2.0;
-export const PLAYER_H_SLIDE = 0.8;
-export const SLIDE_TIME = 0.62;
-
-export const GRAPPLE_HEIGHT = 8.6;
-
-export const COIN_VALUE = 1;
+export const PW = 40;
+export const PH = 92;
+export const PH_SLIDE = 50;
 
 export const PALETTE = {
-  skyTop: 0x5fa8e6,
-  skyMid: 0xb6dcf7,
-  skyHorizon: 0xfff0d4,
-  fog: 0xcfe9fb,
-  sun: 0xfff1cf,
-  roof: 0xe2dccf,
-  roofEdge: 0x7fcfc0,
-  tower: 0xc3d1e2,
-  hazard: 0xf07c6a,
-  gate: 0x6fb7e8,
-  blocker: 0x9b8be0,
-  coin: 0xffc53d,
-  facades: [0xf6e1bc, 0xcfe9d7, 0xf5c8bf, 0xc9dcf2, 0xf2e7a6],
+  skyTop: '#3f92d2',
+  skyMid: '#a8d7f2',
+  skyLow: '#ffe2b8',
+  sun: '#fff6d8',
+  cloud: '#ffffff',
+  farCity: '#b8d2e6',
+  midCity: '#8fb2cd',
+  concrete: '#f0ebdd',
+  concreteDark: '#dcd5c4',
+  roofBand: '#faf6ea',
+  roofEdge: '#5fbf9a',
+  window: '#a6c8de',
+  windowFrame: '#ffffff',
+  ink: '#20304a',
+  hazard: '#f0785f',
+  hazardLight: '#fce8e2',
+  coin: '#f7c948',
+  coinDark: '#d9a11f',
+  dust: '#ffffff',
 };
 
 export const SKINS = [
-  { id: 'default', name: 'Голубой',   price: 0,    suit: 0x4fb8e0, trim: 0xff8fb1 },
-  { id: 'mint',    name: 'Мята',      price: 250,  suit: 0x6fd3a6, trim: 0xffe08a },
-  { id: 'peach',   name: 'Персик',    price: 400,  suit: 0xf59f72, trim: 0x7fb8ff },
-  { id: 'lilac',   name: 'Сирень',    price: 700,  suit: 0xa892e8, trim: 0xffd27a },
-  { id: 'sun',     name: 'Солнце',    price: 1500, suit: 0xffc94d, trim: 0x5aa9ff },
-  { id: 'snow',    name: 'Снег',      price: 2500, suit: 0xf3f7fb, trim: 0x4fb8e0 },
+  { id: 'default', name: 'Морская',   price: 0,    suit: '#3fb3d8', trim: '#f0785f', legs: '#20304a' },
+  { id: 'mint',    name: 'Мята',      price: 250,  suit: '#54c9a0', trim: '#ffe08a', legs: '#1f3a34' },
+  { id: 'peach',   name: 'Персик',    price: 400,  suit: '#f59f72', trim: '#4f8fe0', legs: '#3a2318' },
+  { id: 'lilac',   name: 'Сирень',    price: 700,  suit: '#a892e8', trim: '#ffd27a', legs: '#2a2340' },
+  { id: 'sun',     name: 'Солнце',    price: 1500, suit: '#ffc94d', trim: '#e2583f', legs: '#3a2c10' },
+  { id: 'snow',    name: 'Снег',      price: 2500, suit: '#f3f7fb', trim: '#3fb3d8', legs: '#2b3a4a' },
 ];
 
 export const TRAILS = [
-  { id: 'none',    name: 'Без следа', price: 0,    color: 0xffffff },
-  { id: 'cyan',    name: 'Бирюза',    price: 300,  color: 0x4fc3c7 },
-  { id: 'pink',    name: 'Роза',      price: 600,  color: 0xff8fb1 },
-  { id: 'rainbow', name: 'Радуга',    price: 1200, color: 0xffffff },
+  { id: 'none',    name: 'Без следа', price: 0,    color: null },
+  { id: 'cyan',    name: 'Бирюза',    price: 300,  color: '#3fb3d8' },
+  { id: 'pink',    name: 'Коралл',    price: 600,  color: '#f0785f' },
+  { id: 'rainbow', name: 'Радуга',    price: 1200, color: 'rainbow' },
 ];
