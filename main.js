@@ -8,11 +8,8 @@ import { unlockAudio, sfx } from './audio.js';
 
 const canvas = document.getElementById('game');
 
-const lowEnd = (navigator.deviceMemory || 4) <= 3;
-
 const ui = new UI();
 const game = new Game(canvas, {
-  bloom: !lowEnd,
   onDeath: (res) => handleDeath(res),
   onCoin: (n) => {
     ui.setHud(game.distance, n);

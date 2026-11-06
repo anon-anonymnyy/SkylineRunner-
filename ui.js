@@ -240,7 +240,7 @@ export class UI {
       const active = d.trail === t.id;
       const card = document.createElement('button');
       card.className = 'item' + (active ? ' item-active' : '');
-      const swatch = t.id === 'rainbow' ? 'linear-gradient(90deg,#ff2fb4,#ffd400,#22e6ff)' : hex(t.color);
+      const swatch = t.id === 'rainbow' ? 'linear-gradient(90deg,#ff8fb1,#ffd27a,#4fc3c7)' : hex(t.color);
       card.innerHTML = `
         <div class="swatch" style="background:${swatch}"></div>
         <div class="item-name">${t.name}</div>

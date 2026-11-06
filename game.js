@@ -1,34 +1,27 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-
 import { World } from './world.js';
 import { Player } from './player.js';
-import { START_SPEED, MAX_SPEED, SPEED_GROWTH, COIN_VALUE } from './config.js';
+import { START_SPEED, MAX_SPEED, SPEED_GROWTH, COIN_VALUE, PALETTE } from './config.js';
 import { sfx } from './audio.js';
 
 export class Game {
   constructor(canvas, opts = {}) {
-    this.canvas = canvas;
     this.opts = opts;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: false,
       powerPreference: 'high-performance',
-      stencil: false,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.0;
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x1a0f33, 75, 230);
+    this.scene.fog = new THREE.Fog(PALETTE.fog, 80, 260);
 
     this.camera = new THREE.PerspectiveCamera(64, window.innerWidth / window.innerHeight, 0.1, 400);
     this.camera.position.set(0, 5.4, 9.5);
@@ -38,8 +31,6 @@ export class Game {
 
     this.world = new World(this.scene);
     this.player = new Player(this.scene);
-
-    this.setupPost();
 
     this.state = 'menu';
     this.speed = START_SPEED;
@@ -61,10 +52,11 @@ export class Game {
     const mat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
+      fog: false,
       uniforms: {
-        top: { value: new THREE.Color(0x1b0b3a) },
-        mid: { value: new THREE.Color(0x5b1e7a) },
-        bottom: { value: new THREE.Color(0xff6a3d) },
+        top: { value: new THREE.Color(PALETTE.skyTop) },
+        mid: { value: new THREE.Color(PALETTE.skyMid) },
+        bottom: { value: new THREE.Color(PALETTE.skyHorizon) },
       },
       vertexShader: `
         varying vec3 vPos;
@@ -78,8 +70,8 @@ export class Game {
         varying vec3 vPos;
         void main() {
           float h = normalize(vPos).y;
-          vec3 col = mix(bottom, mid, smoothstep(-0.15, 0.28, h));
-          col = mix(col, top, smoothstep(0.22, 0.85, h));
+          vec3 col = mix(bottom, mid, smoothstep(-0.05, 0.22, h));
+          col = mix(col, top, smoothstep(0.2, 0.8, h));
           gl_FragColor = vec4(col, 1.0);
         }
       `,
@@ -88,39 +80,22 @@ export class Game {
     this.scene.add(this.sky);
 
     this.sun = new THREE.Mesh(
-      new THREE.CircleGeometry(26, 48),
-      new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.85 })
+      new THREE.CircleGeometry(20, 48),
+      new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false })
     );
-    this.sun.position.set(-70, 24, -210);
+    this.sun.position.set(-70, 60, -230);
     this.scene.add(this.sun);
 
-    for (let i = 0; i < 3; i++) {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(20 + i * 9, 0.35, 6, 64),
-        new THREE.MeshBasicMaterial({ color: i % 2 ? 0x22e6ff : 0xff2fb4, transparent: true, opacity: 0.35 })
-      );
-      ring.position.set(60 + i * 10, 40 + i * 8, -230 - i * 20);
-      ring.rotation.z = 0.4;
-      this.scene.add(ring);
-    }
-  }
-
-  setupPost() {
-    this.composer = null;
-    if (this.opts.bloom === false) return;
-    try {
-      this.composer = new EffectComposer(this.renderer);
-      this.composer.setSize(window.innerWidth, window.innerHeight);
-      this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.composer.addPass(new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.72,
-        0.85,
-        0.62
-      ));
-      this.composer.addPass(new OutputPass());
-    } catch (e) {
-      this.composer = null;
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: false });
+    for (let i = 0; i < 9; i++) {
+      const cloud = new THREE.Group();
+      for (let k = 0; k < 4; k++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 3, 12, 10), cloudMat);
+        puff.position.set(k * 5 - 7, Math.random() * 2, Math.random() * 3);
+        cloud.add(puff);
+      }
+      cloud.position.set((Math.random() - 0.5) * 220, 34 + Math.random() * 16, -90 - Math.random() * 140);
+      this.scene.add(cloud);
     }
   }
 
@@ -131,7 +106,6 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     this.renderer.setSize(w, h, false);
-    if (this.composer) this.composer.setSize(w, h);
   }
 
   applySkin(skin) {
@@ -210,9 +184,8 @@ export class Game {
   }
 
   animateSky() {
-    const t = performance.now() * 0.001;
-    this.sun.position.y = 24 + Math.sin(t * 0.3) * 1.5;
     this.sky.position.copy(this.camera.position);
+    this.sun.lookAt(this.camera.position);
   }
 
   updateCamera(dt) {
@@ -257,7 +230,7 @@ export class Game {
     if (!r) {
       r = new THREE.Mesh(
         new THREE.RingGeometry(0.25, 0.4, 16),
-        new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: 0xffd45a, transparent: true, side: THREE.DoubleSide, depthWrite: false })
       );
       this.scene.add(r);
     }
@@ -322,11 +295,7 @@ export class Game {
 
   render() {
     this.updateRings(1 / 60);
-    if (this.composer) {
-      this.composer.render();
-    } else {
-      this.renderer.render(this.scene, this.camera);
-    }
+    this.renderer.render(this.scene, this.camera);
   }
 
   moveLane(dir) {
