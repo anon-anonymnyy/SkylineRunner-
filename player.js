@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { suitTexture } from './textures.js';
 import {
   LANE_X, LANE_SWITCH_SPEED, GRAVITY, JUMP_V, DOUBLE_JUMP_V,
   PLAYER_H, PLAYER_H_SLIDE, SLIDE_TIME, GRAPPLE_HEIGHT,
@@ -25,9 +26,10 @@ export class Player {
     this.landed = false;
     this.height = PLAYER_H;
 
-    this.matSuit = new THREE.MeshStandardMaterial({ color: 0x22e6ff, roughness: 0.35, metalness: 0.25, emissive: 0x0a4d5c, emissiveIntensity: 0.6 });
-    this.matTrim = new THREE.MeshStandardMaterial({ color: 0xff2fb4, roughness: 0.3, metalness: 0.3, emissive: 0xff2fb4, emissiveIntensity: 0.9 });
-    this.matDark = new THREE.MeshStandardMaterial({ color: 0x1b2340, roughness: 0.6, metalness: 0.1 });
+    const suitMap = suitTexture();
+    this.matSuit = new THREE.MeshStandardMaterial({ color: 0x4fb8e0, map: suitMap, roughness: 0.7, metalness: 0.05 });
+    this.matTrim = new THREE.MeshStandardMaterial({ color: 0xff8fb1, map: suitMap, roughness: 0.7, metalness: 0.05 });
+    this.matDark = new THREE.MeshStandardMaterial({ color: 0x2f3a52, map: suitMap, roughness: 0.8, metalness: 0.05 });
 
     this.buildMesh();
     this.setGender('f');
@@ -67,13 +69,13 @@ export class Player {
     coat.rotation.x = Math.PI;
     b.add(coat);
 
-    this.glowRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.5, 0.68, 24),
-      new THREE.MeshBasicMaterial({ color: 0x22e6ff, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+    this.shadowBlob = new THREE.Mesh(
+      new THREE.CircleGeometry(0.6, 24),
+      new THREE.MeshBasicMaterial({ color: 0x1d3557, transparent: true, opacity: 0.22, depthWrite: false })
     );
-    this.glowRing.rotation.x = -Math.PI / 2;
-    this.glowRing.position.y = 0.03;
-    this.root.add(this.glowRing);
+    this.shadowBlob.rotation.x = -Math.PI / 2;
+    this.shadowBlob.position.y = 0.02;
+    this.root.add(this.shadowBlob);
 
     this.hook = new THREE.Mesh(
       new THREE.SphereGeometry(0.16, 10, 8),
@@ -83,7 +85,7 @@ export class Player {
     this.body.add(this.hook);
 
     this.ropeGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 1, 0)]);
-    this.rope = new THREE.Line(this.ropeGeom, new THREE.LineBasicMaterial({ color: 0x9dfaff }));
+    this.rope = new THREE.Line(this.ropeGeom, new THREE.LineBasicMaterial({ color: 0x3a3a4a }));
     this.rope.visible = false;
     this.body.add(this.rope);
   }
@@ -106,10 +108,7 @@ export class Player {
 
   applySkin(skin) {
     this.matSuit.color.setHex(skin.suit);
-    this.matSuit.emissive.setHex(skin.glow);
     this.matTrim.color.setHex(skin.trim);
-    this.matTrim.emissive.setHex(skin.trim);
-    this.glowRing.material.color.setHex(skin.glow);
   }
 
   reset() {
@@ -130,7 +129,7 @@ export class Player {
     this.root.visible = true;
     this.hook.visible = false;
     this.rope.visible = false;
-    this.glowRing.visible = true;
+    this.shadowBlob.visible = true;
   }
 
   moveLane(dir) {
@@ -255,8 +254,9 @@ export class Player {
     if (this.grappling) {
       this.armR.rotation.x = -2.2;
     }
-    this.glowRing.position.y = 0.03 - this.y;
-    this.glowRing.visible = this.y < 3;
+
+    this.shadowBlob.position.y = 0.02 - this.y;
+    this.shadowBlob.visible = this.y < 3;
   }
 
   consumeLanded() {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { LANE_X, ROOF_W, CHUNK_LEN, GRAPPLE_HEIGHT } from './config.js';
+import { LANE_X, ROOF_W, CHUNK_LEN, GRAPPLE_HEIGHT, PALETTE } from './config.js';
+import { roofTexture, facadeTexture, hazardTexture, metalTexture } from './textures.js';
 
 export class World {
   constructor(scene) {
@@ -15,87 +16,87 @@ export class World {
 
     this.nextSpawnZ = -60;
 
+    this.roofMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: roofTexture(), roughness: 0.9 });
+    this.edgeMat = new THREE.MeshStandardMaterial({ color: PALETTE.roofEdge, roughness: 0.5 });
+    const facadeTex = facadeTexture();
+    this.facadeMats = PALETTE.facades.map((c) => new THREE.MeshStandardMaterial({ color: c, map: facadeTex, roughness: 0.85 }));
+    this.towerMat = new THREE.MeshStandardMaterial({ color: PALETTE.tower, map: metalTexture(), roughness: 0.7 });
+    this.coinMat = new THREE.MeshStandardMaterial({ color: PALETTE.coin, emissive: 0x664400, emissiveIntensity: 0.35, metalness: 0.4, roughness: 0.3 });
+    this.hazardMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: hazardTexture(), roughness: 0.6 });
+    this.gateMat = new THREE.MeshStandardMaterial({ color: PALETTE.gate, map: metalTexture(), roughness: 0.5 });
+    this.blockerMat = new THREE.MeshStandardMaterial({ color: PALETTE.blocker, map: metalTexture(), roughness: 0.6 });
+    this.postMat = new THREE.MeshStandardMaterial({ color: 0x5b6470, map: metalTexture(), roughness: 0.6 });
+    this.anchorMat = new THREE.MeshBasicMaterial({ color: 0x3aa0e0 });
+    this.coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    this.geo = {
+      roof: new THREE.BoxGeometry(ROOF_W, 0.6, CHUNK_LEN),
+      body: new THREE.BoxGeometry(ROOF_W + 1.2, 22, CHUNK_LEN - 0.4),
+      edge: new THREE.BoxGeometry(0.14, 0.14, CHUNK_LEN),
+      back: new THREE.BoxGeometry(ROOF_W, 0.14, 0.14),
+      tower: new THREE.BoxGeometry(1, 1, 1),
+      coin: new THREE.TorusGeometry(0.32, 0.1, 8, 16),
+      jumper: new THREE.BoxGeometry(3.2, 1.5, 1.2),
+      laserBeam: new THREE.BoxGeometry(3.4, 0.3, 0.3),
+      post: new THREE.CylinderGeometry(0.12, 0.12, 1.55, 8),
+      blocker: new THREE.BoxGeometry(3.2, 3.4, 1.4),
+      bars: new THREE.BoxGeometry(2.9, 0.18, 1.48),
+      anchorRing: new THREE.TorusGeometry(0.9, 0.1, 8, 24),
+      anchorCore: new THREE.SphereGeometry(0.22, 10, 8),
+    };
+
     this.buildLights();
     this.initChunks();
   }
 
   buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0x9fd8ff, 0x2a1440, 1.1));
+    this.scene.add(new THREE.HemisphereLight(0xdff3ff, 0x8a7a6a, 1.5));
 
-    const dir = new THREE.DirectionalLight(0xffe8f5, 2.0);
-    dir.position.set(-14, 26, 10);
-    dir.castShadow = true;
-    dir.shadow.mapSize.set(1024, 1024);
-    dir.shadow.camera.left = -30;
-    dir.shadow.camera.right = 30;
-    dir.shadow.camera.top = 40;
-    dir.shadow.camera.bottom = -20;
-    dir.shadow.camera.near = 1;
-    dir.shadow.camera.far = 90;
-    this.scene.add(dir);
-
-    this.magenta = new THREE.PointLight(0xff2fb4, 90, 70, 2);
-    this.magenta.position.set(9, 7, -18);
-    this.scene.add(this.magenta);
-
-    this.cyan = new THREE.PointLight(0x22e6ff, 90, 70, 2);
-    this.cyan.position.set(-9, 7, -8);
-    this.scene.add(this.cyan);
+    const sun = new THREE.DirectionalLight(PALETTE.sun, 2.4);
+    sun.position.set(-14, 26, 10);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -30;
+    sun.shadow.camera.right = 30;
+    sun.shadow.camera.top = 40;
+    sun.shadow.camera.bottom = -20;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 90;
+    this.scene.add(sun);
   }
 
   makeChunk(z) {
-    if (!World.winGeo) {
-      World.winGeo = new THREE.BoxGeometry(0.5, 0.9, 0.1);
-      World.winMatA = new THREE.MeshBasicMaterial({ color: 0xffd166 });
-      World.winMatB = new THREE.MeshBasicMaterial({ color: 0x8b5cf6 });
-      World.towerGeo = new THREE.BoxGeometry(1, 1, 1);
-      World.towerMat = new THREE.MeshStandardMaterial({ color: 0x0f1424, roughness: 0.95 });
-    }
-
     const g = new THREE.Group();
     g.position.z = z;
 
-    const roof = new THREE.Mesh(
-      new THREE.BoxGeometry(ROOF_W, 0.6, CHUNK_LEN),
-      new THREE.MeshStandardMaterial({ color: 0x1c2440, roughness: 0.75, metalness: 0.15 })
-    );
+    const roof = new THREE.Mesh(this.geo.roof, this.roofMat);
     roof.position.y = -0.3;
     roof.receiveShadow = true;
     g.add(roof);
 
-    const bodyH = 22;
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(ROOF_W + 1.2, bodyH, CHUNK_LEN - 0.4),
-      new THREE.MeshStandardMaterial({ color: 0x141a2e, roughness: 0.9, metalness: 0.05 })
-    );
-    body.position.y = -bodyH / 2 - 0.6;
+    const body = new THREE.Mesh(this.geo.body, this.facadeMats[Math.floor(Math.random() * this.facadeMats.length)]);
+    body.position.y = -22 / 2 - 0.6;
+    body.castShadow = true;
+    body.receiveShadow = true;
     g.add(body);
 
-    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x22e6ff });
     for (const side of [-1, 1]) {
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, CHUNK_LEN), edgeMat);
+      const strip = new THREE.Mesh(this.geo.edge, this.edgeMat);
       strip.position.set(side * (ROOF_W / 2 - 0.1), 0.02, 0);
       g.add(strip);
     }
-    const backStrip = new THREE.Mesh(new THREE.BoxGeometry(ROOF_W, 0.14, 0.14), edgeMat);
-    backStrip.position.set(0, 0.02, -CHUNK_LEN / 2 + 0.1);
-    g.add(backStrip);
-
-    for (let i = 0; i < 26; i++) {
-      const w = new THREE.Mesh(World.winGeo, Math.random() > 0.5 ? World.winMatA : World.winMatB);
-      const side = Math.random() > 0.5 ? 1 : -1;
-      w.position.set(side * (ROOF_W / 2 + 0.65), -3 - Math.random() * 16, (Math.random() - 0.5) * CHUNK_LEN);
-      w.rotation.y = side * Math.PI / 2;
-      g.add(w);
-    }
+    const back = new THREE.Mesh(this.geo.back, this.edgeMat);
+    back.position.set(0, 0.02, -CHUNK_LEN / 2 + 0.1);
+    g.add(back);
 
     for (let i = 0; i < 4; i++) {
       const h = 20 + Math.random() * 40;
       const w = 5 + Math.random() * 5;
-      const tower = new THREE.Mesh(World.towerGeo, World.towerMat);
+      const tower = new THREE.Mesh(this.geo.tower, this.towerMat);
       tower.scale.set(w, h, w);
       const side = i % 2 === 0 ? -1 : 1;
       tower.position.set(side * (16 + Math.random() * 14), -h / 2 + 1, (Math.random() - 0.5) * CHUNK_LEN);
+      tower.castShadow = true;
       g.add(tower);
     }
 
@@ -122,40 +123,30 @@ export class World {
 
   createObstacle(type) {
     const mesh = new THREE.Group();
-    let w = 1, h = 1, d = 1, y = 0;
+    let w, h, d, y;
 
     if (type === 'jumper') {
       w = 3.2; h = 1.5; d = 1.2; y = 0.75;
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: 0xff3b6b, emissive: 0x8a0020, emissiveIntensity: 0.7, roughness: 0.4 })
-      );
+      const box = new THREE.Mesh(this.geo.jumper, this.hazardMat);
       box.castShadow = true;
       mesh.add(box);
-      const top = new THREE.Mesh(new THREE.BoxGeometry(w + 0.16, 0.12, d + 0.16), new THREE.MeshBasicMaterial({ color: 0xff9ab5 }));
-      top.position.y = h / 2;
-      mesh.add(top);
     } else if (type === 'laser') {
       w = 3.4; h = 0.3; d = 0.3; y = 1.55;
-      mesh.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: 0x00ffd5 })));
-      mesh.add(new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.4, h + 0.3, d + 0.3),
-        new THREE.MeshBasicMaterial({ color: 0x00ffd5, transparent: true, opacity: 0.22 })
-      ));
+      const beam = new THREE.Mesh(this.geo.laserBeam, this.gateMat);
+      beam.castShadow = true;
+      mesh.add(beam);
       for (const s of [-1, 1]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.55, 8), new THREE.MeshStandardMaterial({ color: 0x2a3350 }));
+        const post = new THREE.Mesh(this.geo.post, this.postMat);
         post.position.set(s * (w / 2 + 0.1), -0.78, 0);
+        post.castShadow = true;
         mesh.add(post);
       }
     } else {
       w = 3.2; h = 3.4; d = 1.4; y = 1.7;
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: 0x7c3bff, emissive: 0x3a0a8a, emissiveIntensity: 0.8, roughness: 0.35, metalness: 0.3 })
-      );
+      const box = new THREE.Mesh(this.geo.blocker, this.blockerMat);
       box.castShadow = true;
       mesh.add(box);
-      const bars = new THREE.Mesh(new THREE.BoxGeometry(w - 0.3, 0.18, d + 0.08), new THREE.MeshBasicMaterial({ color: 0xd4a3ff }));
+      const bars = new THREE.Mesh(this.geo.bars, this.gateMat);
       bars.position.y = 0.6;
       mesh.add(bars);
     }
@@ -175,10 +166,7 @@ export class World {
   getCoin() {
     let c = this.pools.coin.pop();
     if (!c) {
-      const mesh = new THREE.Mesh(
-        new THREE.TorusGeometry(0.32, 0.1, 8, 16),
-        new THREE.MeshStandardMaterial({ color: 0xffd400, emissive: 0xffaa00, emissiveIntensity: 0.9, metalness: 0.7, roughness: 0.25 })
-      );
+      const mesh = new THREE.Mesh(this.geo.coin, this.coinMat);
       c = { mesh, active: false, lane: 0, z: 0, y: 0 };
       this.scene.add(mesh);
     }
@@ -200,14 +188,10 @@ export class World {
     let a = this.pools.anchor.pop();
     if (!a) {
       const g = new THREE.Group();
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.9, 0.1, 8, 24),
-        new THREE.MeshBasicMaterial({ color: 0x9dfaff })
-      );
+      const ring = new THREE.Mesh(this.geo.anchorRing, this.anchorMat);
       ring.rotation.y = Math.PI / 2;
       g.add(ring);
-      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })));
-      g.add(new THREE.PointLight(0x22e6ff, 30, 20, 2));
+      g.add(new THREE.Mesh(this.geo.anchorCore, this.coreMat));
       a = { mesh: g, ring, active: false, lane: 0, z: 0 };
       this.scene.add(g);
     }
@@ -307,7 +291,6 @@ export class World {
       c.z += dz;
       c.mesh.position.z = c.z;
       c.mesh.rotation.y += dt * 4;
-      c.mesh.rotation.z += dt * 1.4;
       if (c.z > 14) {
         this.releaseCoin(c);
         this.coins.splice(i, 1);
@@ -328,10 +311,6 @@ export class World {
 
     this.nextSpawnZ += dz;
     this.populate(difficulty);
-
-    const t = performance.now() * 0.0004;
-    this.magenta.position.z = -18 + Math.sin(t) * 6;
-    this.cyan.position.z = -6 + Math.cos(t * 1.3) * 6;
   }
 
   reset() {
